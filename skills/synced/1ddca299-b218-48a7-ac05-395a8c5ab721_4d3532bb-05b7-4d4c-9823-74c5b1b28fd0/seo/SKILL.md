@@ -1,0 +1,971 @@
+---
+name: seo
+description: SEO best practices for React + Vite + Tailwind CSS apps built with sticklight.com. Use when building or reviewing web pages, writing content for the web, generating meta tags, improving search rankings, setting up sitemap or robots.txt, adding structured data (JSON-LD), or optimizing images and performance in a Vite-based SPA. Covers: static fallback meta tags, dynamic SEO with @unhead/react, useSEO hook, sitemaps (dynamic via Edge Function and static), semantic HTML, heading hierarchy, image SEO, link best practices, URL structure, Core Web Vitals, favicon and OG image specs, mobile-first design, and IndexNow integration for instant search engine notifications.
+---
+
+# SEO Skill for Sticklight Apps
+
+This skill helps you build React apps with proper SEO implementation for search engines and social sharing.
+
+## Your Task
+
+When this skill is active, follow these steps:
+
+1. **Assess the current state** — Check if the project already has SEO setup (`index.html` meta tags, `@unhead/react`, `useSEO` hook, sitemap, robots.txt)
+2. **Add static fallbacks** — Ensure `index.html` has default meta tags with `data-hid` attributes for crawlers that don't execute JavaScript
+3. **Set up dynamic SEO** — Install `@unhead/react`, create the provider, and add the `useSEO` hook
+4. **Apply per-page SEO** — Call `useSEO()` on every page/route with appropriate title, description, image, and URL
+5. **Add structured data** — Use `useArticleSchema()` for articles/blog posts, or add JSON-LD for other content types
+6. **Configure sitemap and robots.txt** — Create a dynamic sitemap (Edge Function) or static sitemap, and add `robots.txt`
+7. **Use semantic HTML** — Ensure proper `<header>`, `<main>`, `<article>`, `<section>`, `<footer>` structure with correct heading hierarchy
+8. **Optimize assets** — Add `alt` to images, use lazy loading, set dimensions, prefer WebP, use descriptive link text
+9. **Set up IndexNow** — If using Cloud Backend, deploy the IndexNow Edge Function for instant search engine notifications
+10. **Verify** — Run through the SEO Checklist (section 13) before shipping
+
+## Overview
+
+SPAs (Single Page Applications) need special SEO handling because search engines may not execute JavaScript. This skill covers:
+- Static fallback meta tags in `index.html`
+- Dynamic SEO with `@unhead/react`
+- Sitemaps (dynamic and static)
+- robots.txt configuration
+- Semantic HTML structure
+- Image optimization
+- Performance best practices
+- IndexNow integration
+
+---
+
+## 1. Static SEO in index.html
+
+Add static meta tags as fallbacks for crawlers that don't execute JavaScript. Use `data-hid` attributes so @unhead/react can replace them when React hydrates.
+
+```html
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  
+  <title>Site Name | Your tagline here</title>
+  <meta name="description" content="Your site description" data-hid="description">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Site Name | Your tagline here" data-hid="og:title">
+  <meta property="og:description" content="Your site description" data-hid="og:description">
+  <meta property="og:type" content="website" data-hid="og:type">
+  <meta property="og:image" content="/og-image.jpeg" data-hid="og:image">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" data-hid="twitter:card">
+  <meta name="twitter:title" content="Site Name | Your tagline here" data-hid="twitter:title">
+  <meta name="twitter:description" content="Your site description" data-hid="twitter:description">
+  <meta name="twitter:image" content="/og-image.jpeg" data-hid="twitter:image">
+  
+  <!-- Canonical -->
+  <link rel="canonical" href="https://yourdomain.com" data-hid="canonical">
+</head>
+```
+
+**Important:** The `data-hid` attribute is required for @unhead/react to identify and replace these tags with dynamic values.
+
+---
+
+## 2. Dynamic SEO with @unhead/react
+
+### 2.1 Create the Provider
+
+Create `src/providers/UnheadProvider.tsx`:
+
+```typescript
+import { type ReactNode } from 'react';
+import { createHead, UnheadProvider } from '@unhead/react/client';
+
+const head = createHead();
+
+export function AppUnheadProvider({ children }: { children: ReactNode }) {
+  return <UnheadProvider head={head}>{children}</UnheadProvider>;
+}
+```
+
+### 2.2 Wrap Your App
+
+In `src/main.tsx`, wrap your app with the provider:
+
+```typescript
+import { AppUnheadProvider } from '@/providers/UnheadProvider';
+
+<AppUnheadProvider>
+  <App />
+</AppUnheadProvider>
+```
+
+### 2.3 Create the useSEO Hook
+
+Create `src/hooks/useSEO.ts`:
+
+```typescript
+import { useHead } from '@unhead/react';
+
+const SITE_NAME = 'Your Site Name';
+const SITE_TITLE = 'Your Site Name | Your tagline';
+const BASE_URL = 'https://yourdomain.com';
+const DEFAULT_DESCRIPTION = 'Your default description';
+const DEFAULT_IMAGE = '/og-image.jpeg';
+
+export interface SEOProps {
+  title?: string;
+  description?: string;
+  image?: string;
+  url?: string;
+  type?: 'website' | 'article';
+  publishedTime?: string;
+  modifiedTime?: string;
+  author?: string;
+  noIndex?: boolean;
+}
+
+export function useSEO({
+  title,
+  description = DEFAULT_DESCRIPTION,
+  image = DEFAULT_IMAGE,
+  url = '',
+  type = 'website',
+  publishedTime,
+  modifiedTime,
+  author,
+  noIndex = false
+}: SEOProps = {}) {
+  const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
+  const fullUrl = `${BASE_URL}${url}`;
+  const fullImage = image?.startsWith('http') ? image : `${BASE_URL}${image}`;
+
+  useHead({
+    title: fullTitle,
+    meta: [
+      { key: 'description', name: 'description', content: description },
+      { key: 'og:type', property: 'og:type', content: type },
+      { key: 'og:title', property: 'og:title', content: fullTitle },
+      { key: 'og:description', property: 'og:description', content: description },
+      { key: 'og:image', property: 'og:image', content: fullImage },
+      { key: 'og:url', property: 'og:url', content: fullUrl },
+      { key: 'og:site_name', property: 'og:site_name', content: SITE_NAME },
+      { key: 'twitter:card', name: 'twitter:card', content: 'summary_large_image' },
+      { key: 'twitter:title', name: 'twitter:title', content: fullTitle },
+      { key: 'twitter:description', name: 'twitter:description', content: description },
+      { key: 'twitter:image', name: 'twitter:image', content: fullImage },
+      ...(publishedTime ? [{ key: 'article:published_time', property: 'article:published_time', content: publishedTime }] : []),
+      ...(modifiedTime ? [{ key: 'article:modified_time', property: 'article:modified_time', content: modifiedTime }] : []),
+      ...(author ? [{ key: 'article:author', property: 'article:author', content: author }] : []),
+      ...(noIndex ? [{ key: 'robots', name: 'robots', content: 'noindex, nofollow' }] : [])
+    ],
+    link: [
+      { key: 'canonical', rel: 'canonical', href: fullUrl }
+    ]
+  });
+}
+```
+
+### 2.4 JSON-LD Structured Data for Articles
+
+Add this to the same `useSEO.ts` file for blog posts:
+
+```typescript
+export function useArticleSchema({
+  title,
+  description,
+  image,
+  url,
+  publishedTime,
+  modifiedTime,
+  authorName
+}: {
+  title: string;
+  description: string;
+  image?: string;
+  url: string;
+  publishedTime: string;
+  modifiedTime?: string;
+  authorName: string;
+}) {
+  const fullUrl = `${BASE_URL}${url}`;
+  const fullImage = image?.startsWith('http') ? image : image ? `${BASE_URL}${image}` : `${BASE_URL}${DEFAULT_IMAGE}`;
+
+  useHead({
+    script: [
+      {
+        key: 'article-schema',
+        type: 'application/ld+json',
+        innerHTML: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: title,
+          description,
+          image: fullImage,
+          url: fullUrl,
+          datePublished: publishedTime,
+          dateModified: modifiedTime || publishedTime,
+          author: { '@type': 'Person', name: authorName },
+          publisher: { '@type': 'Organization', name: SITE_NAME, url: BASE_URL }
+        })
+      }
+    ]
+  });
+}
+```
+
+### 2.5 Usage in Pages
+
+**Homepage:**
+```typescript
+useSEO({ url: '/', type: 'website' });
+```
+
+**Blog Post:**
+```typescript
+useSEO({
+  title: post.title,
+  description: post.excerpt,
+  image: post.cover_image_url,
+  url: `/post/${post.slug}`,
+  type: 'article',
+  publishedTime: post.published_at,
+  modifiedTime: post.updated_at,
+  author: post.author_name
+});
+
+useArticleSchema({
+  title: post.title,
+  description: post.excerpt,
+  image: post.cover_image_url,
+  url: `/post/${post.slug}`,
+  publishedTime: post.published_at,
+  modifiedTime: post.updated_at,
+  authorName: post.author_name
+});
+```
+
+**404 Page:**
+```typescript
+useSEO({
+  title: 'Page Not Found',
+  description: 'The page you are looking for does not exist.',
+  noIndex: true
+});
+```
+
+---
+
+## 3. Sitemap
+
+### Option A: Dynamic Sitemap (with Cloud Backend)
+
+If the app uses Cloud Backend, create an Edge Function that queries the database and returns an XML sitemap. This automatically includes new content.
+
+**Important:** Use `SUPABASE_ANON_KEY` (not service role) to ensure the sitemap only includes content that is publicly accessible via RLS policies.
+
+**Edge Function** - `supabase/functions/sitemap/index.ts`:
+
+```typescript
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const SITE_URL = 'https://yourdomain.com';
+
+interface Post {
+  slug: string;
+  updated_at: string;
+  published_at: string | null;
+}
+
+Deno.serve(async () => {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select('slug, updated_at, published_at')
+      .not('published_at', 'is', null)
+      .order('published_at', { ascending: false });
+
+    if (error) {
+      console.error('Database error:', error);
+      return new Response('Error generating sitemap', { status: 500 });
+    }
+
+    const xml = generateSitemapXml(posts || []);
+
+    return new Response(xml, {
+      headers: {
+        'Content-Type': 'application/xml',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  } catch (err) {
+    console.error('Sitemap generation error:', err);
+    return new Response('Error generating sitemap', { status: 500 });
+  }
+});
+
+function generateSitemapXml(posts: Post[]): string {
+  const today = new Date().toISOString().split('T')[0];
+
+  const postUrls = posts.map((post) => {
+    const lastmod = post.updated_at 
+      ? new Date(post.updated_at).toISOString().split('T')[0]
+      : today;
+    
+    return `
+  <url>
+    <loc>${SITE_URL}/post/${escapeXml(post.slug)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+  }).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_URL}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>${postUrls}
+</urlset>`;
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+```
+
+**Why `SUPABASE_ANON_KEY`?**
+- Respects Row Level Security (RLS) policies
+- Only returns data that anonymous/public users can access
+- If RLS policies change, sitemap automatically reflects those changes
+- Prevents exposing URLs for draft, private, or restricted content
+
+Deploy with `verifyJwt: false` so search engines can access it.
+
+**Static Sitemap Index** - Create `public/sitemap.xml` that points to the Edge Function:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://YOUR_PROJECT_ID.supabase.co/functions/v1/sitemap</loc>
+  </sitemap>
+</sitemapindex>
+```
+
+---
+
+### Option B: Static Sitemap (without Cloud Backend)
+
+If the app does NOT use Cloud Backend, create a static `public/sitemap.xml` file. This must be manually updated each time a new page is added.
+
+**Static Sitemap** - `public/sitemap.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://yourdomain.com</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://yourdomain.com/about</loc>
+    <lastmod>2024-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://yourdomain.com/contact</loc>
+    <lastmod>2024-01-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>
+```
+
+**When to update:** Add a new `<url>` block each time a page is published. Update the `<lastmod>` date when page content changes.
+
+**Priority guide:**
+
+| Page Type | Priority | Change Frequency |
+|-----------|----------|------------------|
+| Homepage | 1.0 | weekly |
+| Main pages (About, Services) | 0.8 | monthly |
+| Blog posts / Articles | 0.8 | monthly |
+| Secondary pages (Contact, FAQ) | 0.7 | monthly |
+| Legal pages (Privacy, Terms) | 0.5 | yearly |
+
+**Submit your sitemap to both:**
+- [Google Search Console](https://search.google.com/search-console) — Sitemaps section
+- [Bing Webmaster Tools](https://www.bing.com/webmasters) — Sitemaps section (also covers Yahoo and DuckDuckGo)
+
+---
+
+## 4. robots.txt
+
+Create `public/robots.txt`:
+
+```
+User-agent: *
+Allow: /
+
+Sitemap: https://yourdomain.com/sitemap.xml
+```
+
+---
+
+## 5. Semantic HTML Structure
+
+```html
+<body>
+  <header>
+    <!-- Logo, navigation, site-wide header -->
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Primary content of the page (only ONE per page) -->
+    
+    <article>
+      <!-- Self-contained content: blog post, news article, product -->
+      <h1>Page Title</h1>
+      <p>Content...</p>
+    </article>
+
+    <section>
+      <!-- Thematic grouping of content -->
+      <h2>Section Title</h2>
+    </section>
+
+    <aside>
+      <!-- Sidebar, related content -->
+    </aside>
+  </main>
+
+  <footer>
+    <!-- Copyright, links, contact info -->
+  </footer>
+</body>
+```
+
+**Rules:**
+- One `<main>` per page
+- One `<h1>` per page (should match the page title/intent)
+- Use `<article>` for standalone content that could be syndicated
+- Use `<section>` for thematic groupings with headings
+- Use `<nav>` for navigation blocks
+
+---
+
+## 6. Heading Hierarchy
+
+```html
+<h1>Main Page Title</h1>           <!-- Only ONE per page -->
+
+  <h2>Major Section</h2>           <!-- Main sections -->
+    <h3>Subsection</h3>            <!-- Within h2 -->
+      <h4>Detail</h4>              <!-- Within h3 -->
+
+  <h2>Another Major Section</h2>
+    <h3>Subsection</h3>
+```
+
+**Rules:**
+- Never skip levels (don't go from h1 to h3)
+- h1 should match or closely relate to the `<title>` tag
+- Use headings for structure, not for styling (use CSS for size)
+- Screen readers and search engines use headings to understand page structure
+
+---
+
+## 7. Image SEO
+
+```html
+<!-- Good -->
+<img 
+  src="/images/product-red-shoes.webp" 
+  alt="Red running shoes with white soles on wooden floor"
+  loading="lazy"
+  width="800"
+  height="600"
+/>
+
+<!-- Bad -->
+<img src="/images/IMG_1234.jpg" alt="image" />
+```
+
+**Rules:**
+- **Descriptive alt text** - Describe what's in the image (not "image of..." or "photo of...")
+- **Lazy loading** - Add `loading="lazy"` for below-the-fold images
+- **Dimensions** - Always include `width` and `height` to prevent layout shift
+- **File names** - Use descriptive names (`red-running-shoes.webp` not `IMG_1234.jpg`)
+- **Format** - Prefer WebP for better compression
+- **Decorative images** - Use `alt=""` (empty) for purely decorative images
+
+---
+
+## 8. Link Best Practices
+
+```html
+<!-- Internal links - use descriptive text -->
+<a href="/pricing">View our pricing plans</a>
+
+<!-- External links - add rel attributes -->
+<a href="https://external.com" target="_blank" rel="noopener noreferrer">
+  External Resource
+</a>
+
+<!-- Avoid generic link text -->
+❌ <a href="/pricing">Click here</a>
+❌ <a href="/pricing">Learn more</a>
+✅ <a href="/pricing">See pricing details</a>
+```
+
+**Rules:**
+- Use descriptive anchor text (not "click here" or "learn more")
+- Add `rel="noopener noreferrer"` for external links with `target="_blank"`
+- Ensure all internal pages are reachable within 3 clicks from homepage
+
+---
+
+## 9. URL Structure
+
+```
+Good URLs:
+✅ /blog/how-to-build-landing-page
+✅ /products/wireless-headphones
+✅ /about
+
+Bad URLs:
+❌ /blog/post?id=12345
+❌ /p/12345
+❌ /blog/How_To_Build_A_Landing_Page_2024_Updated
+```
+
+**Rules:**
+- Use lowercase letters
+- Use hyphens (-) not underscores (_)
+- Keep URLs short and descriptive
+- Include primary keyword when relevant
+- Avoid query parameters for content pages
+
+---
+
+## 10. Performance & Core Web Vitals
+
+```html
+<head>
+  <!-- DNS prefetch for domains used later -->
+  <link rel="dns-prefetch" href="https://api.yourdomain.com">
+</head>
+```
+
+**Performance checklist:**
+- Use `dns-prefetch` for non-critical external resources
+- Lazy load images below the fold
+- Avoid layout shifts (always set image dimensions)
+- Minimize blocking JavaScript
+
+---
+
+## 11. Favicon & Social Image
+
+Place these files in the `public` folder:
+
+**Favicon** - `public/favicon.svg`
+- SVG format for modern browsers (scalable, small file size)
+- Referenced in index.html: `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`
+
+**Social Sharing Image** - `public/og-image.jpeg`
+- **Dimensions:** 1200 x 630 pixels (1.91:1 ratio)
+- **Format:** JPEG (keep under 200KB)
+- **Content:** Site name/logo, clear readable text, brand colors
+- Referenced in meta tags: `<meta property="og:image" content="/og-image.jpeg">`
+
+---
+
+## 12. Mobile-First Design
+
+Google uses mobile-first indexing, meaning it primarily uses the mobile version of your site for ranking.
+
+**Checklist:**
+- Responsive design that works on all screen sizes
+- Touch-friendly tap targets (minimum 44x44 pixels)
+- Readable text without zooming (16px minimum body text)
+- No horizontal scrolling
+- Fast loading on mobile networks
+
+---
+
+## 13. SEO Checklist
+
+When building an app with SEO:
+
+- [ ] Add static meta tags in `index.html` with `data-hid` attributes
+- [ ] Set up `@unhead/react` provider
+- [ ] Create `useSEO` hook with site constants
+- [ ] Call `useSEO()` on every page with appropriate props
+- [ ] Add JSON-LD structured data for articles/products
+- [ ] Create sitemap (dynamic with Cloud Backend, static without)
+- [ ] Add `robots.txt` with sitemap reference
+- [ ] Add `favicon.svg` to public folder
+- [ ] Add `og-image.jpeg` (1200x630) to public folder
+- [ ] Use semantic HTML (`<header>`, `<main>`, `<article>`, `<section>`, `<footer>`)
+- [ ] Single `<h1>` per page matching the page intent
+- [ ] Proper heading hierarchy (h1 -> h2 -> h3, no skipping)
+- [ ] Descriptive `alt` attributes on all images
+- [ ] Descriptive link text (not "click here")
+- [ ] Clean URL structure with hyphens
+- [ ] Mobile-responsive design
+- [ ] Submit sitemap to Google Search Console
+- [ ] Submit sitemap to [Bing Webmaster Tools](https://www.bing.com/webmasters)
+- [ ] Set up IndexNow for instant search engine notifications (if using Cloud Backend) — keep `verifyJwt: true` and host-validate every URL inside the function (see Section 14)
+
+---
+
+## 14. IndexNow Integration
+
+IndexNow instantly notifies search engines (Bing, Yandex, Seznam, Naver) when content changes, enabling faster indexing than waiting for crawlers. Submitted URLs are automatically shared across all participating search engines.
+
+### How IndexNow Works
+
+1. You generate a key (8-128 alphanumeric characters)
+2. You host a verification file `{key}.txt` at your site root containing the key
+3. When content changes, you POST the URLs to `api.indexnow.org`
+4. IndexNow verifies ownership via the key file and shares with all participating engines
+
+### Setup
+
+#### Step 1: Generate an API Key
+
+Generate a key at [bing.com/indexnow/getstarted](https://www.bing.com/indexnow/getstarted) or use any 8-128 character string containing only `a-z`, `A-Z`, `0-9`, and `-`.
+
+Example: `a1b2c3d4e5f6g7h8`
+
+#### Step 2: Add the Secret
+
+In Settings -> Secrets, add:
+- Name: `INDEXNOW_KEY`
+- Value: Your generated key
+
+Also add your site URL:
+- Name: `SITE_URL`
+- Value: `https://yourdomain.com`
+
+#### Step 3: Host the Verification File
+
+Create `public/{your-key}.txt` containing only the key:
+
+```
+a1b2c3d4e5f6g7h8
+```
+
+The file must be accessible at `https://yourdomain.com/a1b2c3d4e5f6g7h8.txt`.
+
+#### Step 4: Deploy the Edge Function
+
+Create `supabase/functions/indexnow/index.ts`:
+
+> **Security:** This function is callable from the public internet. Two hardening rules are non-negotiable:
+> 1. **Deploy with `verifyJwt: true`** (the Supabase default) so only requests carrying a valid JWT can invoke it.
+> 2. **Reject any URL whose host does not match `SITE_URL`**, regardless of how it got into the payload. Without this check the function is an open IndexNow relay — anyone with a valid anon JWT (which ships in your client bundle) could submit arbitrary URLs under your domain to pollute search engine queues, or fabricate URLs you never published.
+>
+> The implementation below enforces both. Do **not** simplify the host check away.
+
+```typescript
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow';
+
+interface RequestBody {
+  slugs?: string[];
+  urls?: string[];
+  action?: 'publish' | 'update' | 'delete';
+}
+
+Deno.serve(async (req) => {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const key = Deno.env.get('INDEXNOW_KEY');
+    const siteUrl = Deno.env.get('SITE_URL');
+
+    if (!key || !siteUrl) {
+      return new Response(
+        JSON.stringify({ error: 'INDEXNOW_KEY or SITE_URL not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Parse host from site URL — used both for the IndexNow payload and for
+    // strict per-URL host validation below.
+    const expectedHost = new URL(siteUrl).host;
+
+    const body: RequestBody = await req.json();
+    const { slugs, urls: rawUrls, action } = body;
+
+    // Build the candidate URL list. Slugs are always built server-side from
+    // SITE_URL (trusted). Raw URLs from the request body are untrusted.
+    let candidateUrls: string[] = [];
+    if (rawUrls && rawUrls.length > 0) {
+      candidateUrls = rawUrls;
+    } else if (slugs && slugs.length > 0) {
+      candidateUrls = slugs.map((slug) => `${siteUrl}/post/${slug}`);
+    }
+
+    if (candidateUrls.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No URLs or slugs provided' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // CRITICAL: enforce that every URL belongs to SITE_URL's host.
+    // This blocks the open-relay attack where a caller (even an authenticated
+    // one) submits arbitrary third-party URLs using your IndexNow key.
+    const urlList: string[] = [];
+    for (const candidate of candidateUrls) {
+      try {
+        const parsed = new URL(candidate);
+        if (parsed.host !== expectedHost) {
+          return new Response(
+            JSON.stringify({
+              error: `URL host "${parsed.host}" does not match site host "${expectedHost}"`,
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        urlList.push(parsed.toString());
+      } catch {
+        return new Response(
+          JSON.stringify({ error: `Invalid URL: ${candidate}` }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
+    // Submit to IndexNow API
+    const indexNowPayload = {
+      host: expectedHost,
+      key,
+      keyLocation: `${siteUrl}/${key}.txt`,
+      urlList: urlList.slice(0, 10000),
+    };
+
+    const response = await fetch(INDEXNOW_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(indexNowPayload),
+    });
+
+    if (response.ok || response.status === 202) {
+      console.log(
+        `IndexNow: submitted ${urlList.length} URL(s), action=${action || 'unknown'}, status=${response.status}`,
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Successfully submitted ${urlList.length} URL(s) to IndexNow`,
+          urls: urlList,
+          status: response.status,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const errorText = await response.text();
+    console.error(`IndexNow error: status=${response.status}, body=${errorText}`);
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `IndexNow API returned ${response.status}`,
+        details: errorText,
+      }),
+      { status: response.status, headers: { 'Content-Type': 'application/json' } },
+    );
+  } catch (err) {
+    console.error('IndexNow function error:', err);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+});
+```
+
+**Deployment:** keep JWT verification on (the Supabase default — `verifyJwt: true`). Combined with the host check inside the function, this gives you two independent layers: only authenticated callers reach the function, and even they can only submit URLs under your own domain.
+
+If you ever need an internet-facing trigger (e.g. from a CMS webhook), don't disable `verifyJwt`. Instead either: (a) require a shared-secret header and verify it inside the function, or (b) drive submissions from a Postgres trigger via `pg_net` so the Edge Function is only reached from inside Supabase.
+
+### Client-Side Helper
+
+Call the Edge Function from an authenticated client. Use the **current user's session token**, not the bare anon key — the anon key alone bypasses RLS-aware logging and means anyone with your shipped JS can hit the function.
+
+```typescript
+import { supabase } from '@/integrations/supabase/client';
+
+async function notifyIndexNow(slug: string, action: 'publish' | 'update' | 'delete') {
+  if (!supabase) return;
+
+  // Only logged-in users (typically editors/admins) should trigger IndexNow.
+  // invoke() automatically attaches the current session's access token.
+  const { error } = await supabase.functions.invoke('indexnow', {
+    body: { slugs: [slug], action },
+  });
+
+  if (error) {
+    console.error('IndexNow notification failed:', error);
+  }
+}
+```
+
+If you need this to run for anonymous visitors (you almost never do), wrap it in a server-side trigger instead of opening the function publicly.
+
+**Call after successful database operations:**
+
+| Action | When to Call |
+|--------|--------------|
+| `'publish'` | New post published |
+| `'update'` | Published post content updated |
+| `'delete'` | Post archived or unpublished |
+
+### API Reference
+
+**Edge Function endpoint:**
+
+```
+POST /functions/v1/indexnow
+Content-Type: application/json
+
+{
+  "slugs": ["my-post-slug"],
+  "action": "publish"
+}
+```
+
+Or with full URLs:
+
+```
+POST /functions/v1/indexnow
+Content-Type: application/json
+
+{
+  "urls": ["https://yourdomain.com/post/my-post"],
+  "action": "update"
+}
+```
+
+**IndexNow API (what the Edge Function calls):**
+
+```
+POST https://api.indexnow.org/indexnow
+Content-Type: application/json; charset=utf-8
+
+{
+  "host": "yourdomain.com",
+  "key": "a1b2c3d4e5f6g7h8",
+  "keyLocation": "https://yourdomain.com/a1b2c3d4e5f6g7h8.txt",
+  "urlList": [
+    "https://yourdomain.com/post/my-post"
+  ]
+}
+```
+
+**Response codes from IndexNow API:**
+
+| HTTP Code | Meaning |
+|-----------|---------|
+| 200 | URL submitted successfully |
+| 202 | URL received, key validation pending |
+| 400 | Invalid format |
+| 403 | Key not valid (not found or mismatch) |
+| 422 | URLs don't belong to the host |
+| 429 | Too many requests (potential spam) |
+
+### Notes
+
+- Notifications should run in the background (non-blocking) — don't await the result in the UI
+- Failures are logged server-side but should never interrupt user flow
+- IndexNow automatically shares submissions across all participating search engines
+- You can submit up to 10,000 URLs per request — batch when possible
+- Only submit URLs that have actually changed — don't resubmit unchanged content
+- Verify your setup at [Bing Webmaster Tools](https://www.bing.com/webmasters) under the IndexNow tab
+
+---
+
+## Process
+
+When applying SEO to a page or project, follow this workflow:
+
+1. Read the existing page/component code
+2. Check if `@unhead/react` provider is set up — if not, create `UnheadProvider` and wrap the app
+3. Check if `useSEO` hook exists — if not, create `src/hooks/useSEO.ts` with site constants
+4. Add `useSEO()` call to the page with correct `title`, `description`, `url`, `type`, and `image`
+5. If the page is an article/blog post, also add `useArticleSchema()`
+6. If the page should not be indexed (404, admin, draft), set `noIndex: true`
+7. Verify the page uses semantic HTML: one `<h1>`, proper heading hierarchy, `<main>`, `<article>` where appropriate
+8. Verify all images have descriptive `alt`, `width`, `height`, and `loading="lazy"` where appropriate
+9. Verify all links have descriptive anchor text and external links have `rel="noopener noreferrer"`
+10. Check that `index.html` has static fallback meta tags with `data-hid` attributes
+11. Check that `public/robots.txt` and `public/sitemap.xml` exist
+12. If the project has dynamic content with Cloud Backend, verify the sitemap Edge Function is deployed
+13. If IndexNow is set up, call `notifyIndexNow()` after publishing or updating content
+
+---
+
+## Output Format
+
+When generating or modifying a page component, always include:
+
+1. **`useSEO()` call** at the top of the component with all relevant props
+2. **`useArticleSchema()`** if the page is an article (blog post, news, product)
+3. **Semantic HTML structure** — `<main>`, `<article>`, `<section>` as appropriate
+4. **Single `<h1>`** matching the page intent, followed by proper heading hierarchy
+5. **Image tags** with `alt`, `width`, `height`, and `loading="lazy"`
+6. **Descriptive link text** — no "click here" or "learn more"
+
+When generating project-level SEO setup, include:
+
+1. **`src/providers/UnheadProvider.tsx`** — provider component
+2. **`src/hooks/useSEO.ts`** — hook with site constants, `useSEO`, and `useArticleSchema`
+3. **`index.html`** — static meta tags with `data-hid` attributes
+4. **`public/robots.txt`** — with sitemap reference
+5. **`public/sitemap.xml`** — static or sitemapindex pointing to Edge Function
+6. **`public/favicon.svg`** and **`public/og-image.jpeg`** — asset placeholders or instructions
+
+---
+
+## Key Points
+
+1. **Always use `key` attributes** in useHead meta tags for proper deduplication
+2. **Static fallbacks in index.html** ensure crawlers see content before JS executes
+3. **`data-hid` attributes** link static tags to dynamic replacements
+4. **Use `SUPABASE_ANON_KEY`** for sitemaps to respect RLS and only expose public content
+5. **Canonical URLs** prevent duplicate content issues
+6. **noIndex** for pages that shouldn't be indexed (404, admin pages)
+7. **One h1 per page** — should match the page's main topic
+8. **Semantic HTML** helps search engines understand your content structure

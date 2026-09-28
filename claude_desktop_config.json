@@ -1,0 +1,77 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/admin/Desktop",
+        "/Users/admin/Downloads"
+      ]
+    }
+  },
+  "coworkUserFilesPath": "/Users/admin/Claude",
+  "preferences": {
+    "coworkBrowserToolsEnabled": true,
+    "coworkPreferredBrowser": "chrome",
+    "launchPreviewPersistedWorkspaces": [],
+    "launchPreviewSessionScopedSessions": [],
+    "localAgentModeTrustedFolders": [
+      "/Users/admin/Downloads/proaidhealthcare.com/public_html"
+    ],
+    "coworkLegacyRootGrantsPruned": true,
+    "coworkScheduledTasksEnabled": true,
+    "coworkHipaaRestricted": false,
+    "orgWorkAcrossAppsDisabled": false,
+    "ccdScheduledTasksEnabled": true,
+    "earlyWindowShowLatched": true,
+    "storeReadCacheLatched": true,
+    "sidebarMode": "chat",
+    "bypassPermissionsGateByAccount": {
+      "2a46f5e3-e38d-47d1-a178-8ee41a85df7a": false,
+      "4d3532bb-05b7-4d4c-9823-74c5b1b28fd0": false
+    },
+    "coworkWebSearchEnabled": true,
+    "coworkModelAutoFallbackByAccount": {
+      "2a46f5e3-e38d-47d1-a178-8ee41a85df7a": true,
+      "4d3532bb-05b7-4d4c-9823-74c5b1b28fd0": true
+    },
+    "remoteToolsDeviceName": "imac-fck-local",
+    "epitaxyPrefs": {
+      "starred-local-code-sessions": [],
+      "starred-cowork-spaces": [],
+      "starred-session-groups": [],
+      "dframe-local-slice": {
+        "pinnedOrder": [],
+        "homeProjectsPinnedOrder": []
+      },
+      "ccd-sessions-filter": {
+        "state": {
+          "selectedProjects": []
+        },
+        "version": 0
+      },
+      "desktop-frame.paneStore.v1": {
+        "state": {
+          "extraPanesByMode": {},
+          "colWeightsByMode": {},
+          "rowSplit": 0.5,
+          "draftNonce": 0,
+          "lastPrimaryCodeSession": null
+        },
+        "version": 4
+      },
+      "dframe-group-scopes": {},
+      "starred-local-routines": []
+    },
+    "remoteChatFolderGrants": {
+      "1cb9f536-a308-49e6-bd38-52adfa40c547": {
+        "orgUuid": "REDACTED",
+        "accountUuid": "REDACTED",
+        "folders": [
+          "/Users/admin/git"
+        ]
+      }
+    }
+  }
+}
